@@ -9,10 +9,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ENCRYPT_CMD, PLAINMSG, DECRYPT_MSG, CIPHERMSG  = range(4)
+ENCRYPT_CMD, PLAINMSG, DECRYPT_CMD, CIPHERMSG  = range(4)
 
-sent_key = ""
-sent_msg = ""
+key_encrypt = ""
+key_decrypt = ""
 
 """ start command """
 def start(update, context):
@@ -73,23 +73,23 @@ def getKey_encrypt(update, context):
     else:
         update.message.reply_text('This key is valid. You need to remember this key to decrypt the message.'
         '\nNow send me your plain message.')
-        global sent_key 
-        sent_key = key
+        global key_encrypt 
+        key_encrypt = key
         return PLAINMSG
 
 
 def getPlainMessage(update, context):
     plain_message = update.message.text
-    update.message.reply_text('The encrypted message is: ' + encryptMessage(sent_key, plain_message) + '.')
+    update.message.reply_text('The encrypted message is: ' + encryptMessage(key_encrypt, plain_message) + '.')
     return ConversationHandler.END
 
 
 """ decryption process """
 def decryptMessage(key, message):
-    result = "" 
+    result = ""
     key_index = 0
     message_index = 0
-    message_len = len(message)
+    message_len = float(len(message))
     message_list = list(message) 
   
     col = len(key)
@@ -98,7 +98,7 @@ def decryptMessage(key, message):
   
     dec_cipher = [] 
     for _ in range(row): 
-        dec_cipher += [[None] * col] 
+        dec_cipher += [["&"] * col] 
   
     # Arrange the matrix column wise according  
     # to permutation order by adding into new matrix 
@@ -108,47 +108,45 @@ def decryptMessage(key, message):
             dec_cipher[j][current] = message_list[message_index] 
             message_index += 1
         key_index += 1
-  
+
     # convert decrypted msg matrix into a string 
     try: 
-        result = ''.join(sum(dec_cipher, [])) 
+	    result = ''.join(sum(dec_cipher, [])) 
     except TypeError: 
-        raise TypeError("This program cannot", 
-                        "handle repeating words.") 
-  
-    null_count = result.count('_') 
+	    raise TypeError("This program cannot handle repeating words.") 
+
+    null_count = result.count('&') 
     if null_count > 0: 
         return result[: -null_count] 
+    
     return result 
 
 
 def decrypt_command(update, context):
-    update.message.reply_text('Send me the message that you want to decrypt.')
-    return CIPHERMSG
+    update.message.reply_text('Send me the key to decrypt the message.')
+    return DECRYPT_CMD
 
 
 def getCipher(update, context):
-    cipher = update.message.text
-    global sent_msg
-    sent_msg = cipher
-    update.message.reply_text('Now send me the key to decrypt.')
-    return DECRYPT_MSG
+    global key_decrypt
+    key_decrypt = update.message.text
+    update.message.reply_text('Now send me the message that you want to decrypt.')
+    return CIPHERMSG
 
 
 def getKey_decrypt(update, context):
-    key = update.message.text
-    update.message.reply_text("This key is valid: " + key + '. the decrypted message is: ' + decryptMessage(key, sent_msg) + '.')
+    message = update.message.text
+    update.message.reply_text("The decrypted message is: " + decryptMessage(key_decrypt, message) + '.')
     return ConversationHandler.END
-
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
-def check_msg(update, context):
-    message =  update.message.text
-    if()
+# def check_msg(update, context):
+#     message =  update.message.text
+#     if()
 
 def main():
     updater = Updater("1022827925:AAG7q0ReUZfv7LnL9dCyajUE34Dxh6tScfw", use_context=True)
@@ -167,13 +165,13 @@ def main():
     decrypt_conv_handler = ConversationHandler(
         entry_points=[CommandHandler('decrypt', decrypt_command)],
         states={
-            DECRYPT_MSG: [MessageHandler(Filters.text, getKey_decrypt)],
-            CIPHERMSG: [MessageHandler(Filters.text, getCipher)],
+            DECRYPT_CMD: [MessageHandler(Filters.text, getCipher)],
+            CIPHERMSG: [MessageHandler(Filters.text, getKey_decrypt)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
     dp.add_handler(decrypt_conv_handler)
-    dp.add_handler(MessageHandler(Filters.text, check_msg))
+    # dp.add_handler(MessageHandler(Filters.text, check_msg))
     dp.add_error_handler(error)
 
     updater.start_polling()
